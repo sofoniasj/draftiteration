@@ -114,6 +114,20 @@ const signup = [
 // @desc    Verify a user's email address
 // @route   GET /api/auth/verify-email/:token
 // @access  Public
+const getUserProfile = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.user.id).select('-passwordHash');
+  if (user) {
+    res.json({
+      id: user.id, username: user.username, role: user.role,
+      isPrivate: user.isPrivate, isVerified: user.isVerified,
+      agreedToTerms: user.agreedToTerms, createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    });
+  } else {
+    return next(new AppError('User not found', 404));
+  }
+});
+
 const verifyEmail = [
     param('token').isLength({ min: 64, max: 64 }).withMessage('Invalid token format.'),
 
