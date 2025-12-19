@@ -217,4 +217,4 @@ const googleLogin = asyncHandler(async (req, res, next) => {
     });
 });
 
-export { registerUser, verifyEmail, loginUser, forgotPassword, resetPassword, getUserProfile, googleLogin  };
+export { registerUser, verifyEmail, loginUser, resetPassword, getUserProfile, googleLogin  };
