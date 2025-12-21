@@ -2,22 +2,22 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 
-// File to store content
-const FILE_PATH = path.join('./data/content.txt');
+// File to store content data
+const FILE_PATH = path.join('./content.txt');
 
-// Read all content
+// Utility: read all content
 export const readContents = () => {
   if (!fs.existsSync(FILE_PATH)) return [];
   const lines = fs.readFileSync(FILE_PATH, 'utf-8').split('\n').filter(Boolean);
   return lines.map(line => JSON.parse(line));
 };
 
-// Write all content (overwrite file)
+// Utility: write all content (overwrite)
 export const writeContents = (contents) => {
   fs.writeFileSync(FILE_PATH, contents.map(c => JSON.stringify(c)).join('\n'));
 };
 
-// Add new content
+// Add a new content
 export const addContent = (contentData) => {
   const contents = readContents();
   contentData.id = crypto.randomUUID();
@@ -25,31 +25,39 @@ export const addContent = (contentData) => {
   contentData.likeCount = 0;
   contentData.reports = [];
   contentData.isReported = false;
-  contentData.parentContent = contentData.parentContent || null;
-  contentData.isPrivateToFollowers = contentData.isPrivateToFollowers || false;
   contentData.createdAt = new Date().toISOString();
   contentData.updatedAt = new Date().toISOString();
+  contentData.parentContent = contentData.parentContent || null;
+  contentData.isPrivateToFollowers = contentData.isPrivateToFollowers || false;
 
   contents.push(contentData);
   writeContents(contents);
   return contentData;
 };
 
-// Update content
+// Update content by id
 export const updateContent = (id, updates) => {
   const contents = readContents();
   const index = contents.findIndex(c => c.id === id);
   if (index === -1) return null;
 
   contents[index] = { ...contents[index], ...updates, updatedAt: new Date().toISOString() };
-  if (updates.likes) contents[index].likeCount = updates.likes.length;
-  if (updates.reports) contents[index].isReported = updates.reports.length > 0;
+
+  // Update likeCount if likes changed
+  if (updates.likes) {
+    contents[index].likeCount = updates.likes.length;
+  }
+
+  // Update isReported if reports changed
+  if (updates.reports) {
+    contents[index].isReported = updates.reports.length > 0;
+  }
 
   writeContents(contents);
   return contents[index];
 };
 
-// Like content
+// Add a like to content
 export const likeContent = (id, userId) => {
   const contents = readContents();
   const content = contents.find(c => c.id === id);
@@ -64,7 +72,7 @@ export const likeContent = (id, userId) => {
   return content;
 };
 
-// Report content
+// Add a report to content
 export const reportContent = (id, report) => {
   const contents = readContents();
   const content = contents.find(c => c.id === id);
@@ -82,7 +90,7 @@ export const reportContent = (id, report) => {
   return content;
 };
 
-// Get content by author
+// Fetch content by author
 export const getContentsByAuthor = (authorId) => {
   const contents = readContents();
   return contents.filter(c => c.author === authorId);

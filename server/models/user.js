@@ -2,9 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { readContents } from './content.model.js';
+import { readContents } from './content.model.js'; // Import the plain-text content functions
 
-const FILE_PATH = path.join('./data/users.txt');
+const FILE_PATH = path.join('./users.txt');
 
 // Read all users
 export const readUsers = () => {
@@ -30,11 +30,11 @@ export const addUser = async (userData) => {
 
   if (userData.authProvider === 'local') {
     userData.emailVerificationToken = crypto.randomBytes(32).toString('hex');
-    userData.emailVerificationExpires = Date.now() + 48 * 60 * 60 * 1000;
+    userData.emailVerificationExpires = Date.now() + 48 * 60 * 60 * 1000; // 48 hours
   }
 
   userData.id = crypto.randomUUID();
-  userData.savedArticles = [];
+  userData.savedArticles = []; // Initialize empty savedArticles
   userData.followers = [];
   userData.following = [];
   userData.pendingFollowRequests = [];
@@ -46,25 +46,20 @@ export const addUser = async (userData) => {
   return userData;
 };
 
-// Match password
-export const matchPassword = async (user, enteredPassword) => {
-  if (!user.passwordHash) return false;
-  return await bcrypt.compare(enteredPassword, user.passwordHash);
-};
-
-// Save article for user
+// Save an article for a user
 export const saveArticleForUser = (userId, articleId, customName = '') => {
   const users = readUsers();
   const userIndex = users.findIndex(u => u.id === userId);
   if (userIndex === -1) return null;
 
+  // Validate article exists
   const contents = readContents();
   const article = contents.find(c => c.id === articleId);
   if (!article) return null;
 
   const savedArticle = {
     rootArticle: articleId,
-    lineagePathIds: [],
+    lineagePathIds: [], // Optional: could track parent content IDs if needed
     customName: customName.substring(0, 100),
     savedAt: new Date().toISOString(),
   };
@@ -89,15 +84,5 @@ export const removeSavedArticleForUser = (userId, articleId) => {
   return users[userIndex].savedArticles;
 };
 
-// Get all saved articles with content
-export const getSavedArticlesForUser = (userId) => {
-  const users = readUsers();
-  const user = users.find(u => u.id === userId);
-  if (!user) return [];
-
-  const contents = readContents();
-  return user.savedArticles.map(sa => {
-    const article = contents.find(c => c.id === sa.rootArticle);
-    return { ...sa, content: article || null };
-  });
-};
+// Get all saved articles for a user with content data
+export const getSavedArticlesForUs

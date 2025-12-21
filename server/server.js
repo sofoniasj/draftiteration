@@ -1,12 +1,10 @@
-// Rewrite/server/server.js
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import colors from 'colors';
-
-import connectDB from './config/db.js';
+import path from 'path';
 
 // Route files
 import authRoutes from './routes/auth.routes.js';
@@ -16,25 +14,24 @@ import userRoutes from './routes/user.routes.js';
 import { notFound, errorHandler } from './middleware/error.middleware.js';
 
 dotenv.config();
-connectDB();
+// connectDB(); // Removed: Using plain-text file storage instead
+
 const app = express();
 
 // --- START OF CORS CONFIGURATION ---
-// List of allowed domains
 const allowedOrigins = [
-   // 'https://rewrite-9ers.onrender.com',
+    'http://localhost:5175',
    'http://localhost:5173',
-    'https://drafting.onrender.com', // Your old render domain
-    'https://www.draftiteration.com',    // Your new custom domain
-    process.env.CLIENT_URL               // Any other URL from your .env file
-].filter(Boolean); // This removes any undefined/null values from the list
-app.use(express.static(path.join(__dirname, "public")));
+   'https://drafting.onrender.com',
+   'https://www.draftiteration.com',
+   process.env.CLIENT_URL
+].filter(Boolean);
+
+app.use(express.static(path.join(process.cwd(), "public")));
+
 app.use(cors({
     origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps, curl, or same-origin requests)
         if (!origin) return callback(null, true);
-
-        // If the request's origin is in our list of allowed origins, allow it
         if (allowedOrigins.indexOf(origin) === -1) {
             const msg = `The CORS policy for this site does not allow access from the specified origin: ${origin}`;
             return callback(new Error(msg), false);
@@ -44,7 +41,6 @@ app.use(cors({
     credentials: true
 }));
 // --- END OF CORS CONFIGURATION ---
-
 
 app.use(helmet());
 app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));
