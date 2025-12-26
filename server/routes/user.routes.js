@@ -1,69 +1,127 @@
 // Rewrite/server/routes/user.routes.js
 import express from 'express';
+
+// Controllers
 import {
-       // ... (existing imports)
-    //searchUsers,
-    saveArticleForUser,      // <-- IMPORT NEW
-    unsaveArticleForUser,    // <-- IMPORT NEW
-    getSavedArticlesForUser, // <-- IMPORT NEW
-    // ... (rest of existing imports)
-    getUserProfileByUsername,
-    followUser,
-    unfollowUser,
-    getMyFollowers,
-    getMyFollowing,
-    getMyPendingFollowRequests,
-    respondToFollowRequest,
-    removeFollower,
-    updateUserProfile,
-    toggleAccountPrivacy,
-    changeUsername,
-    changePassword,
-    deleteAccount,
-    requestVerification,
-    getVerificationRequests,
-    approveVerification,
-    searchUsers, // <-- IMPORT NEW FUNCTION
+  // Search
+  searchUsers,
+
+  // Public profile
+  getUserProfileByUsername,
+
+  // Follow system
+  followUser,
+  unfollowUser,
+  getMyFollowers,
+  getMyFollowing,
+  getMyPendingFollowRequests,
+  respondToFollowRequest,
+  removeFollower,
+
+  // Profile & account
+  updateUserProfile,
+  toggleAccountPrivacy,
+  changeUsername,
+  changePassword,
+  deleteAccount,
+
+  // Verification
+  requestVerification,
+  getVerificationRequests,
+  approveVerification,
+
+  // Saved articles
+  saveArticleForUser,
+  unsaveArticleForUser,
+  getSavedArticlesForUser,
 } from '../controllers/user.controller.js';
-import { protect, admin } from '../middleware/auth.middleware.js'; // Assuming 'admin' is a role check middleware
+
+// Middleware
+import { protect, admin } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
-// --- User Search Route ---
-// Placed it near the top for clarity. 'protect' makes it accessible only to logged-in users.
-// Remove 'protect' if you want unauthenticated users to be able to search.
+/* =========================================================
+   SEARCH & PUBLIC PROFILE
+========================================================= */
+
+// User search (authenticated users only)
 router.get('/search', protect, searchUsers);
 
-// --- Public Profile Route (with privacy checks in controller) ---
-router.get('/profile/:username', protect, getUserProfileByUsername); // protect is optional if you want unauth users to see public parts
+// Public profile by username
+// Controller handles privacy rules
+router.get('/profile/:username', protect, getUserProfileByUsername);
 
-// --- Authenticated User Routes (acting on self or others) ---
+/* =========================================================
+   FOLLOW / UNFOLLOW (ACTING ON OTHERS)
+========================================================= */
+
 router.post('/:userIdToFollow/follow', protect, followUser);
 router.post('/:userIdToUnfollow/unfollow', protect, unfollowUser);
 
-// --- Routes for "Me" (current authenticated user) ---
+/* =========================================================
+   "ME" ROUTES (CURRENT AUTHENTICATED USER)
+========================================================= */
+
+// Followers / following
 router.get('/me/followers', protect, getMyFollowers);
 router.get('/me/following', protect, getMyFollowing);
-router.get('/me/pending-requests', protect, getMyPendingFollowRequests);
-router.post('/me/pending-requests/:requesterId/respond', protect, respondToFollowRequest); // approve or deny
-router.delete('/me/followers/:followerIdToRemove', protect, removeFollower);
 
+// Pending follow requests
+router.get('/me/pending-requests', protect, getMyPendingFollowRequests);
+router.post(
+  '/me/pending-requests/:requesterId/respond',
+  protect,
+  respondToFollowRequest
+);
+
+// Remove a follower
+router.delete(
+  '/me/followers/:followerIdToRemove',
+  protect,
+  removeFollower
+);
+
+// Profile & account settings
 router.put('/me/profile', protect, updateUserProfile);
 router.put('/me/privacy', protect, toggleAccountPrivacy);
 router.put('/me/change-username', protect, changeUsername);
 router.put('/me/change-password', protect, changePassword);
-router.delete('/me/account', protect, deleteAccount); // Soft delete
+
+// Account deletion (soft delete)
+router.delete('/me/account', protect, deleteAccount);
+
+// Verification request
 router.post('/me/request-verification', protect, requestVerification);
 
-// --- NEW Saved Article Routes for "Me" ---
+/* =========================================================
+   SAVED ARTICLES (ME)
+========================================================= */
+
 router.post('/me/saved-articles', protect, saveArticleForUser);
 router.get('/me/saved-articles', protect, getSavedArticlesForUser);
-router.delete('/me/saved-articles/:savedItemId', protect, unsaveArticleForUser);
+router.delete(
+  '/me/saved-articles/:savedItemId',
+  protect,
+  unsaveArticleForUser
+);
 
-// --- Admin Routes for User Management ---
-router.get('/admin/verification-requests', protect, admin, getVerificationRequests);
-router.post('/admin/verification-requests/:userId/approve', protect, admin, approveVerification);
-// Add other admin routes for users if needed (e.g., list all users, ban user, etc.)
+/* =========================================================
+   ADMIN ROUTES (MUST BE LAST & PROTECTED)
+========================================================= */
 
+router.get(
+  '/admin/verification-requests',
+  protect,
+  admin,
+  getVerificationRequests
+);
+
+router.post(
+  '/admin/verification-requests/:userId/approve',
+  protect,
+  admin,
+  approveVerification
+);
 
 export default router;

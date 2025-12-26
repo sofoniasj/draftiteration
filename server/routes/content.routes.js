@@ -1,29 +1,33 @@
 // Rewrite/server/routes/content.routes.js
 import express from 'express';
+
+// Controllers
 import {
-  // Main content fetching (handles general, popular via query params)
+  // General / filtering
   getFilteredContent,
-  
-   getSitemap, // <-- IMPORT NEW
-  // Specific Feed Controllers
+
+  // Sitemap
+  getSitemap,
+
+  // Feed controllers
   getMyPageFeed,
   getExploreFeed,
 
-  // Single content item and its variations/lineage
+  // Single content & lineage
   getContentById,
   getContentLineage,
   getContentVersions,
 
-  // User-specific content list
+  // User-specific content
   getArticlesByUser,
 
-  // Protected actions on content
+  // Content actions
   createContent,
   updateContent,
   toggleLikeContent,
   reportContent,
+  unreportContent,
   toggleArticlePrivacy,
-  unreportContent, 
 
   // Admin actions
   getAllContentForAdmin,
@@ -35,48 +39,70 @@ import { protect, admin } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
-// Placed near the top for visibility.
+/* =========================================================
+   PUBLIC & STATIC ROUTES
+========================================================= */
+
+// Sitemap (must be before dynamic routes)
 router.get('/sitemap.xml', getSitemap);
 
-// --- Feed Routes (Specific Endpoints) ---
-// These are protected as they are personalized or involve potentially complex queries
+/* =========================================================
+   FEED ROUTES (PROTECTED)
+========================================================= */
+
 router.get('/feed/my-page', protect, getMyPageFeed);
 router.get('/feed/explore', protect, getExploreFeed);
 
-// --- General Content Fetching Routes ---
-// This route handles various scenarios based on query parameters:
-// - Default: Recent public articles (if no feedType, parentContent=null)
-// - Popular: ?feedType=popular&sortBy=truePopularity_desc
-// - Children/Replies: ?parentContent=<parent_id>
-// - Title lists: ?view=titles
+/* =========================================================
+   ADMIN ROUTES (MUST COME BEFORE :id)
+========================================================= */
+
+router.get('/admin/all', protect, admin, getAllContentForAdmin);
+router.delete('/admin/:id', protect, admin, deleteContentForAdmin);
+
+/* =========================================================
+   GENERAL CONTENT FETCHING
+========================================================= */
+
+// Handles:
+// - recent articles
+// - popular (?feedType=popular)
+// - children (?parentContent=id)
+// - title lists (?view=titles)
 router.get('/', getFilteredContent);
 
-// --- Routes for Specific User's Articles ---
-// 'protect' is used here so req.user is available in getArticlesByUser for privacy checks
+// User profile articles (privacy aware)
 router.get('/user/:userId', protect, getArticlesByUser);
 
-// --- Routes for Individual Content Items & Their Variations ---
-router.get('/:id', getContentById);
+/* =========================================================
+   CONTENT CREATION & MUTATION (PROTECTED)
+========================================================= */
+
+// Create article or reply
+router.post('/', protect, createContent);
+
+// Edit content
+router.put('/:id', protect, updateContent);
+
+// Toggle article privacy (public / followers-only)
+router.put('/:articleId/privacy', protect, toggleArticlePrivacy);
+
+// Like / unlike
+router.post('/:id/like', protect, toggleLikeContent);
+
+// Report / unreport
+router.post('/:id/report', protect, reportContent);
+router.delete('/:id/report', protect, unreportContent);
+
+/* =========================================================
+   DYNAMIC CONTENT ROUTES (MUST BE LAST)
+========================================================= */
+
+// Lineage & versions must come before :id
 router.get('/:id/lineage', getContentLineage);
-router.get('/:id/versions', getContentVersions); // Gets siblings of content item :id
+router.get('/:id/versions', getContentVersions);
 
-// --- Protected Routes for Content Creation & Modification ---
-router.post('/', protect, createContent); // Create new top-level article or reply
-router.put('/:id', protect, updateContent); // Edit existing content text (author or admin)
-router.put('/:articleId/privacy', protect, toggleArticlePrivacy); // Toggle public/followers-only (author or admin)
-router.post('/:id/like', protect, toggleLikeContent); // Like or unlike content
-router.post('/:id/report', protect, reportContent); // Report content
-router.delete('/:id/report', protect, unreportContent); // <-- THIS IS THE MISSING ROUTE.
-// ...
-// --- Admin Only Content Routes ---
-router.get('/admin/all', protect, admin, getAllContentForAdmin); // Get all content items (for admin panel)
-
-router.delete('/admin/:id', protect, admin, deleteContentForAdmin); // Delete any content item and its children (admin)
-
-//import { generateSitemap } from '../controllers/sitemap.controller.js'; // new
-
-// Sitemap route (public)
-//router.get('/sitemap.xml', generateSitemap);
-
+// Single content item
+router.get('/:id', getContentById);
 
 export default router;
