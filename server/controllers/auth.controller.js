@@ -93,3 +93,16 @@ export const googleAuth = asyncHandler(async (req, res) => {
     user: { id: user._id, username: user.username, profilePicture: user.profilePicture }
   });
 });
+
+
+export const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await User.findByIdAndDelete(id);
+
+    res.status(200).json({ message: 'User deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

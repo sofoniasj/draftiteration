@@ -1,70 +1,42 @@
-// Rewrite/client/src/pages/Auth/VerifyEmailPage.jsx
-import React, { useState, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { FaCheckCircle, FaTimesCircle, FaSpinner } from 'react-icons/fa';
+import React, { useEffect, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import axios from 'axios';
 
-const VerifyEmailPage = () => {
-  const [searchParams] = useSearchParams();
-  const { apiClient } = useAuth();
-
-  const [verificationStatus, setVerificationStatus] = useState('verifying'); // 'verifying', 'success', 'error'
-  const [message, setMessage] = useState('Verifying your email address...');
+const VerifyEmail = () => {
+  const { token } = useParams();
+  const [status, setStatus] = useState('loading');
 
   useEffect(() => {
-    const token = searchParams.get('token');
-
-    if (!token) {
-      setVerificationStatus('error');
-      setMessage('No verification token found. Please check the link from your email.');
-      return;
-    }
-
-    const verifyToken = async () => {
+    const verify = async () => {
       try {
-        const response = await apiClient.post('/auth/verify-email', { token });
-        setVerificationStatus('success');
-        setMessage(response.data.message || 'Email verified successfully! You can now log in.');
+        await axios.get(`${import.meta.env.VITE_API_URL}/auth/verify-email/${token}`);
+        setStatus('success');
       } catch (err) {
-        setVerificationStatus('error');
-        setMessage(err.response?.data?.error || 'Verification failed. The token may be invalid or expired.');
+        setStatus('error');
       }
     };
-
-    verifyToken();
-  }, [searchParams, apiClient]); // Rerun if the token in the URL changes
+    verify();
+  }, [token]);
 
   return (
-    <div className="card text-center" style={{ maxWidth: '500px', margin: '3rem auto', padding: '2rem' }}>
-      {verificationStatus === 'verifying' && (
+    <div className="auth-container card text-center">
+      {status === 'loading' && <h2>Verifying your email...</h2>}
+      {status === 'success' && (
         <>
-          <FaSpinner className="spin" size={40} style={{ color: '#007bff', margin: '0 auto 1rem auto' }} />
-          <h2>Verifying Your Email...</h2>
-          <p>{message}</p>
+          <h2 className="text-success">Email Verified!</h2>
+          <p>You can now log in to your account.</p>
+          <Link to="/login" className="btn btn-primary">Go to Login</Link>
         </>
       )}
-
-      {verificationStatus === 'success' && (
+      {status === 'error' && (
         <>
-          <FaCheckCircle size={40} style={{ color: '#28a745', margin: '0 auto 1rem auto' }} />
-          <h2>Verification Successful!</h2>
-          <p>{message}</p>
-          <Link to="/login" className="btn btn-primary" style={{marginTop: '1rem'}}>
-            Proceed to Login
-          </Link>
-        </>
-      )}
-
-      {verificationStatus === 'error' && (
-        <>
-          <FaTimesCircle size={40} style={{ color: '#dc3545', margin: '0 auto 1rem auto' }} />
-          <h2>Verification Failed</h2>
-          <p>{message}</p>
-          <p style={{fontSize: '0.9em', color:'#6c757d', marginTop:'1rem'}}>If you believe this is an error, please try registering again or contact support.</p>
+          <h2 className="text-danger">Verification Failed</h2>
+          <p>The link may be expired or invalid.</p>
+          <Link to="/signup" className="btn btn-secondary">Back to Signup</Link>
         </>
       )}
     </div>
   );
 };
 
-export default VerifyEmailPage;
+export default VerifyEmail;

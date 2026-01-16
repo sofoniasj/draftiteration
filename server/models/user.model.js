@@ -1,103 +1,27 @@
-import fs from 'fs';
-import path from 'path';
+import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
-import { readContents } from './content.model.js';
 
-const FILE_PATH = path.join('./data/users.txt');
+const userSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true, trim: true },
+  email: { type: String, required: true, unique: true, lowercase: true },
+  password: { type: String, select: false },
+  googleId: { type: String, unique: true, sparse: true },
+  authProvider: { type: String, enum: ['local', 'google'], default: 'local' },
+  isVerified: { type: Boolean, default: false },
+  verificationToken: String,
+  verificationExpires: Date,
+  profilePicture: { type: String, default: '' },
+  role: { type: String, enum: ['user', 'admin'], default: 'user' },
+}, { timestamps: true });
 
-// Read all users
-export const readUsers = () => {
-  if (!fs.existsSync(FILE_PATH)) return [];
-  const lines = fs.readFileSync(FILE_PATH, 'utf-8').split('\n').filter(Boolean);
-  return lines.map(line => JSON.parse(line));
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('password') || !this.password) return next();
+  this.password = await bcrypt.hash(this.password, 12);
+  next();
+});
+
+userSchema.methods.comparePassword = async function (candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
 };
 
-// Write all users
-export const writeUsers = (users) => {
-  fs.writeFileSync(FILE_PATH, users.map(u => JSON.stringify(u)).join('\n'));
-};
-
-// Add new user
-export const addUser = async (userData) => {
-  const users = readUsers();
-
-  if (userData.password) {
-    const salt = await bcrypt.genSalt(12);
-    userData.passwordHash = await bcrypt.hash(userData.password, salt);
-    delete userData.password;
-  }
-
-  if (userData.authProvider === 'local') {
-    userData.emailVerificationToken = crypto.randomBytes(32).toString('hex');
-    userData.emailVerificationExpires = Date.now() + 48 * 60 * 60 * 1000;
-  }
-
-  userData.id = crypto.randomUUID();
-  userData.savedArticles = [];
-  userData.followers = [];
-  userData.following = [];
-  userData.pendingFollowRequests = [];
-  userData.createdAt = new Date().toISOString();
-  userData.updatedAt = new Date().toISOString();
-
-  users.push(userData);
-  writeUsers(users);
-  return userData;
-};
-
-// Match password
-export const matchPassword = async (user, enteredPassword) => {
-  if (!user.passwordHash) return false;
-  return await bcrypt.compare(enteredPassword, user.passwordHash);
-};
-
-// Save article for user
-export const saveArticleForUser = (userId, articleId, customName = '') => {
-  const users = readUsers();
-  const userIndex = users.findIndex(u => u.id === userId);
-  if (userIndex === -1) return null;
-
-  const contents = readContents();
-  const article = contents.find(c => c.id === articleId);
-  if (!article) return null;
-
-  const savedArticle = {
-    rootArticle: articleId,
-    lineagePathIds: [],
-    customName: customName.substring(0, 100),
-    savedAt: new Date().toISOString(),
-  };
-
-  users[userIndex].savedArticles.push(savedArticle);
-  users[userIndex].updatedAt = new Date().toISOString();
-  writeUsers(users);
-  return savedArticle;
-};
-
-// Remove saved article
-export const removeSavedArticleForUser = (userId, articleId) => {
-  const users = readUsers();
-  const userIndex = users.findIndex(u => u.id === userId);
-  if (userIndex === -1) return null;
-
-  users[userIndex].savedArticles = users[userIndex].savedArticles.filter(
-    sa => sa.rootArticle !== articleId
-  );
-  users[userIndex].updatedAt = new Date().toISOString();
-  writeUsers(users);
-  return users[userIndex].savedArticles;
-};
-
-// Get all saved articles with content
-export const getSavedArticlesForUser = (userId) => {
-  const users = readUsers();
-  const user = users.find(u => u.id === userId);
-  if (!user) return [];
-
-  const contents = readContents();
-  return user.savedArticles.map(sa => {
-    const article = contents.find(c => c.id === sa.rootArticle);
-    return { ...sa, content: article || null };
-  });
-};
+export default mongoose.model('User', userSchema);
